@@ -1,7 +1,6 @@
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import java.net.URL;
 
 public class Calculator extends JPanel implements MouseListener, KeyListener {
    public JFrame frame = new JFrame("EveryCalc");
@@ -11,10 +10,14 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
    public static JMenuItem[] basicMathItems = {new JMenuItem("Addition"), new JMenuItem("Subtraction"), new JMenuItem("Multiplication"), new JMenuItem("Division"), new JMenuItem("Square Root"), new JMenuItem("Exponents")};
    public static JMenuItem[] algebraItems = {new JMenuItem("Logarithm -> Exponential"), new JMenuItem("Exponential -> Logarithm"), new JMenuItem("Evaluate With i"), new JMenuItem("Square Root Negative")};
    public static JMenuItem[] chemItems = {new JMenuItem("Liters -> Moles"), new JMenuItem("Moles -> Liters"), new JMenuItem("Mass -> Moles"), new JMenuItem("Moles -> Mass"), new JMenuItem("Q = mc∆T: Find Q"), new JMenuItem("Q = mc∆T: Find m"), new JMenuItem("Q = mc∆T: Find c"), new JMenuItem("Q = mc∆T: find ∆T")};
+   public static JTextArea currentThing = null;
 
    public static void main(String[] args) {
-      JOptionPane.showMessageDialog((Component)null, "Welcome To The Everything Calculator! This Calculator Provides Algebra, Chemistry, And Lots Of Other Calculations\n That Are Normally Spread Across Different Websites!", "Welcome.", JOptionPane.INFORMATION_MESSAGE);
-      new Calculator();
+      SwingUtilities.invokeLater(new Runnable() {
+         public void run() {
+            new Calculator();
+         }
+      });
    }
 
    public Calculator() {
@@ -53,8 +56,32 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       jmb.add(jm2);
       jmb.add(jm3);
       for(JMenuItem jmi : basicMathItems) {
+         ActionListener al = null;
+         switch(jmi.getText()) {
+            case "Addition":
+               al = (e -> addition());
+               break;
+            case "Subtraction":
+               al = (e -> subtraction());
+               break;
+            case "Multiplication":
+               al = (e -> multiplication());
+               break;
+            case "Division":
+               al = (e -> division());
+               break;
+            case "Square Root":
+               al = (e -> sqrt());
+               break;
+            case "Exponents":
+               al = (e -> atob());
+               break;
+            default:
+               al = (e -> JOptionPane.showMessageDialog(null, "Something Went Wrong!", "Error!", JOptionPane.ERROR_MESSAGE));
+               break;
+         }
          jm.add(jmi);
-         jmi.addActionListener(e -> System.out.println("HERE"));
+         jmi.addActionListener(al);
       }
       for(JMenuItem jmi : algebraItems) {
          jm2.add(jmi);
@@ -84,12 +111,31 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       // }
 
    }
-   public void addition() {}
-   public void subtraction() {}
-   public void multiplication() {}
-   public void division() {}
-   public void sqrt() {}
-   public void atob() {}
+   public void addition() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("This Is The Addition Place. Type In A Valid Addition Equation.");
+      jta.setBounds(10, 10, Toolkit.getDefaultToolkit().getScreenSize().width - 10, Toolkit.getDefaultToolkit().getScreenSize().height - 30);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+   }
+   public void subtraction() {
+      System.out.println("Sub");
+   }
+   public void multiplication() {
+      System.out.println("Mult");
+   }
+   public void division() {
+      System.out.println("Div");
+   }
+   public void sqrt() {
+      System.out.println("SQRT");
+   }
+   public void atob() {
+      System.out.println("Exp");
+   }
 
    public void mousePressed(MouseEvent evt) {}
 
@@ -101,13 +147,19 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
 
    public void mouseExited(MouseEvent evt) {}
 
-   public void keyPressed(KeyEvent evt) {
-   }
+   public void keyPressed(KeyEvent evt) {}
 
-   public void keyReleased(KeyEvent evt) {
-   }
+   public void keyReleased(KeyEvent evt) {}
 
    public void keyTyped(KeyEvent evt) {
+      if(((Character)evt.getKeyChar()).equals('\n')) {
+         frame.requestFocus();
+         try {
+            MathUtils.interpretAdditionEquation(currentThing.getText());
+         } catch(InvalidEquationException err) {
+            JOptionPane.showMessageDialog(null, err.getMessage(), "Result:", JOptionPane.INFORMATION_MESSAGE);
+         }
+      }
    }
 }
 class AboutEveryCalc extends JPanel {
@@ -118,15 +170,15 @@ class AboutEveryCalc extends JPanel {
    }
 
    public AboutEveryCalc() {
-      this.frame.setUndecorated(false);
-      this.frame.setResizable(false);
-      this.frame.add(this);
-      this.frame.setVisible(true);
-      this.frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+      frame.setUndecorated(false);
+      frame.setResizable(false);
+      frame.add(this);
+      frame.setVisible(true);
+      frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
       Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-      this.frame.setSize(screenSize.width / 3, screenSize.height / 2);
-      this.frame.setLocation(screenSize.width / 6, screenSize.height / 6);
-      this.frame.setLayout(null);
+      frame.setSize(screenSize.width / 3, screenSize.height / 2);
+      frame.setLocation(screenSize.width / 6, screenSize.height / 6);
+      frame.setLayout(null);
       JTextArea ta = new JTextArea("""
             EveryCalc, Or EverythingCalculator Is A Free, Open-Source Calculator That\n
             Helps With Complex Things Normal Calculators Can't Do. From Chemistry\n
@@ -142,5 +194,15 @@ class AboutEveryCalc extends JPanel {
       ta.setOpaque(true);
       ta.setBounds(10, 10, screenSize.width / 3, screenSize.height / 2);
       frame.add(ta);
+   }
+}
+class MathUtils {
+   public static void interpretAdditionEquation(String equation) throws InvalidEquationException {
+      String temp = equation.replace("\n", "").replace(" ", "").replace("\t", "");
+      System.out.println(temp);
+      boolean isPlusFirst = ((Character)(temp.toCharArray()[0])).equals('+');
+      if(isPlusFirst) {
+         throw new InvalidEquationException("Error: Equation Is Invalid.");
+      }
    }
 }
