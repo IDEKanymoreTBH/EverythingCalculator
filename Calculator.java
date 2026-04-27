@@ -1,12 +1,17 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.util.prefs.Preferences;
+import java.util.Arrays;
+import java.util.HashMap;
 import javax.swing.*;
-
 public class Calculator extends JPanel implements MouseListener, KeyListener {
    public JFrame frame = new JFrame("EveryCalc");
    public SystemTray systemTray;
    public TrayIcon tIcon;
    public PopupMenu ppMenu;
+   public static Options options = new Options();
+   public static Preferences prefs = Preferences.userNodeForPackage(Calculator.class);
+   public static HashMap<String, String> properties = new HashMap<>();
    public static JMenuItem[] basicMathItems = {new JMenuItem("Addition"), new JMenuItem("Subtraction"), new JMenuItem("Multiplication"), new JMenuItem("Division"), new JMenuItem("Square Root"), new JMenuItem("Exponents")};
    public static JMenuItem[] algebraItems = {new JMenuItem("Logarithm -> Exponential"), new JMenuItem("Exponential -> Logarithm"), new JMenuItem("Evaluate With i"), new JMenuItem("Square Root Negative")};
    public static JMenuItem[] chemItems = {new JMenuItem("Liters -> Moles"), new JMenuItem("Moles -> Liters"), new JMenuItem("Mass -> Moles"), new JMenuItem("Moles -> Mass"), new JMenuItem("Q = mc∆T: Find Q"), new JMenuItem("Q = mc∆T: Find m"), new JMenuItem("Q = mc∆T: Find c"), new JMenuItem("Q = mc∆T: find ∆T")};
@@ -21,10 +26,11 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
    }
 
    public Calculator() {
+      properties.put("Calculator.PreventOverflow", prefs.get("Calculator.PreventOverflow", "false"));
       System.setProperty("apple.awt.application.name", "EveryCalc");
       System.setProperty("apple.laf.useScreenMenuBar", "true");
       this.frame.setUndecorated(false);
-      this.frame.setResizable(true);
+      this.frame.setResizable(false);
       this.addMouseListener(this);
       this.addKeyListener(this);
       this.frame.add(this);
@@ -40,7 +46,7 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
             """);
       ta.setEditable(false);
       ta.setOpaque(true);
-      ta.setBounds(10, 10, screenSize.width - 10, screenSize.height - 10);
+      ta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
       frame.add(ta);
       JMenuBar jmb = new JMenuBar();
       frame.setJMenuBar(jmb);
@@ -51,10 +57,15 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       JMenu jm = new JMenu("Basic Math");
       JMenu jm2 = new JMenu("Algebra");
       JMenu jm3 = new JMenu("Chemistry");
+      JMenu jm4 = new JMenu("Options");
+      JMenuItem options = new JMenuItem("Show Options");
+      options.addActionListener(e -> options());
+      jm4.add(options);
       jmb.add(about);
       jmb.add(jm);
       jmb.add(jm2);
       jmb.add(jm3);
+      jmb.add(jm4);
       for(JMenuItem jmi : basicMathItems) {
          ActionListener al = null;
          switch(jmi.getText()) {
@@ -115,8 +126,9 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       frame.getContentPane().removeAll();
       frame.revalidate();
       frame.repaint();
-      JTextArea jta = new JTextArea("This Is The Addition Place. Type In A Valid Addition Equation.");
-      jta.setBounds(10, 10, Toolkit.getDefaultToolkit().getScreenSize().width - 10, Toolkit.getDefaultToolkit().getScreenSize().height - 30);
+      JTextArea jta = new JTextArea("This Is The Addition Place. Type In A Valid Addition Equation.\nDon't Worry About Negatives. Just Type 9223372036854775807 + 1 As Long As 'Prevent Overflow' Isn't On ;)");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
       jta.addKeyListener(this);
       frame.add(jta);
       currentThing = jta;
@@ -136,7 +148,16 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
    public void atob() {
       System.out.println("Exp");
    }
-
+   public void options() {
+      options.showOptions();
+   }
+   public static void updatePrefs() {
+      for(int i = 0; i < properties.size(); i++) {
+         System.out.println("Key: " + properties.keySet().toArray()[i].toString());
+         System.out.println("Value: " + properties.get(properties.keySet().toArray()[i].toString()));
+         prefs.put(properties.keySet().toArray()[i].toString(), properties.get(properties.keySet().toArray()[i].toString()));
+      }
+   }
    public void mousePressed(MouseEvent evt) {}
 
    public void mouseReleased(MouseEvent evt) {}
@@ -199,10 +220,71 @@ class AboutEveryCalc extends JPanel {
 class MathUtils {
    public static void interpretAdditionEquation(String equation) throws InvalidEquationException {
       String temp = equation.replace("\n", "").replace(" ", "").replace("\t", "");
-      System.out.println(temp);
-      boolean isPlusFirst = ((Character)(temp.toCharArray()[0])).equals('+');
-      if(isPlusFirst) {
-         throw new InvalidEquationException("Error: Equation Is Invalid.");
+      boolean isPlusFirst;
+      try {
+         isPlusFirst = ((Character)(temp.toCharArray()[0])).equals('+');
+      } catch(ArrayIndexOutOfBoundsException err) {
+         throw new InvalidEquationException("Error: Your Equation Is Non-Existent.");
       }
+      boolean isInvalidCharacter = false;
+      for(int i = 0; i < temp.toCharArray().length; i++) {
+         if(!(Character.isDigit(temp.toCharArray()[i]) || ((Character)(temp.toCharArray()[i])).equals('+'))) {
+            isInvalidCharacter = true;
+            break;
+         }
+      }
+      if(isPlusFirst) {
+         throw new InvalidEquationException("Error: Your Equation Starts With A Plus, Which Is Not Allowed.");
+      } else if(isInvalidCharacter) {
+         throw new InvalidEquationException("Error: Your Equation Contains An Invalid Character.");
+      }
+      //Literally Just Learned About This BTW.
+      try {
+         long result = Arrays.stream(temp.split("\\+")).mapToLong(Long::parseLong).sum();
+         //If The Prevent Overflow Option Is Selected, Check If The Equation Overflows
+         if(Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventOverflow"))) {
+            long[] array = Arrays.stream(temp.split("\\+")).mapToLong(Long::parseLong).toArray();
+            long lo = 0;
+            for(int i = 0; i < array.length; i++) {
+               try {
+                  lo = Math.addExact(lo, array[i]);
+               } catch(ArithmeticException err) {
+                  throw new InvalidEquationException("Because Of Your Settings, This Equation Overflowed. Turn Off 'Prevent Overflow' To See Overflow Value.");
+               }
+            }
+         }
+         JOptionPane.showMessageDialog(null, "The Result Of Your Addition Is: " + Long.toString(result), "Result", JOptionPane.INFORMATION_MESSAGE);
+      } catch(NumberFormatException err) {
+         throw new InvalidEquationException("Error: A Number In This Equation Is Invalid.");
+      }
+   }
+}
+class Options extends JPanel {
+   public JFrame frame = null;
+   public void showOptions() {
+      frame = new JFrame("Options");
+      frame.setUndecorated(false);
+      frame.setResizable(false);
+      frame.add(this);
+      frame.setVisible(true);
+      frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+      frame.setSize(Toolkit.getDefaultToolkit().getScreenSize().width / 3, Toolkit.getDefaultToolkit().getScreenSize().height / 2);
+      frame.setLocation(Toolkit.getDefaultToolkit().getScreenSize().width / 6, Toolkit.getDefaultToolkit().getScreenSize().height / 4);
+      frame.setLayout(null);
+      JCheckBox jcb = new JCheckBox("Prevent Number Overflow");
+      jcb.setSelected(Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventOverflow")));
+      jcb.addActionListener(e -> {
+         if(jcb.isSelected()) {
+            System.out.println("Enabled!");
+            Calculator.properties.put("Calculator.PreventOverflow", "true");
+            Calculator.updatePrefs();
+         } else {
+            System.out.println("Disabled!");
+            Calculator.properties.put("Calculator.PreventOverflow", "false");
+            Calculator.updatePrefs();
+         }
+      });
+      jcb.setBounds(10, 10, frame.getWidth() - (frame.getWidth() - 20), frame.getHeight() - (frame.getHeight() - 20));
+      frame.add(jcb);
    }
 }
