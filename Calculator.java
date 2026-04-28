@@ -1,6 +1,8 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.text.NumberFormat;
 import java.util.prefs.Preferences;
+import java.util.stream.LongStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import javax.swing.*;
@@ -16,6 +18,7 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
    public static JMenuItem[] algebraItems = {new JMenuItem("Logarithm -> Exponential"), new JMenuItem("Exponential -> Logarithm"), new JMenuItem("Evaluate With i"), new JMenuItem("Square Root Negative")};
    public static JMenuItem[] chemItems = {new JMenuItem("Liters -> Moles"), new JMenuItem("Moles -> Liters"), new JMenuItem("Mass -> Moles"), new JMenuItem("Moles -> Mass"), new JMenuItem("Q = mc∆T: Find Q"), new JMenuItem("Q = mc∆T: Find m"), new JMenuItem("Q = mc∆T: Find c"), new JMenuItem("Q = mc∆T: find ∆T")};
    public static JTextArea currentThing = null;
+   public static String currentMode = "null";
 
    public static void main(String[] args) {
       SwingUtilities.invokeLater(new Runnable() {
@@ -132,9 +135,19 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       jta.addKeyListener(this);
       frame.add(jta);
       currentThing = jta;
+      currentMode = "ADD";
    }
    public void subtraction() {
-      System.out.println("Sub");
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("This Is The Subtraction Place. Type In A Valid Addition Equation.\nMust Type 0 - 1 If Wanting -1 Because My Code (And Java Streams) Suck.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "SUB";
    }
    public void multiplication() {
       System.out.println("Mult");
@@ -175,10 +188,23 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
    public void keyTyped(KeyEvent evt) {
       if(((Character)evt.getKeyChar()).equals('\n')) {
          frame.requestFocus();
-         try {
-            MathUtils.interpretAdditionEquation(currentThing.getText());
-         } catch(InvalidEquationException err) {
-            JOptionPane.showMessageDialog(null, err.getMessage(), "Result:", JOptionPane.INFORMATION_MESSAGE);
+         switch(currentMode) {
+            case "ADD":
+               try {
+                  MathUtils.interpretAdditionEquation(currentThing.getText());
+               } catch(InvalidEquationException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result: ", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "SUB":
+               try {
+                  MathUtils.interpretSubtractionEquation(currentThing.getText());
+               } catch(InvalidEquationException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result: ", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            default:
+               JOptionPane.showMessageDialog(null, "...HOW?!?!?", "...", JOptionPane.ERROR_MESSAGE);
          }
       }
    }
@@ -252,15 +278,55 @@ class MathUtils {
                   throw new InvalidEquationException("Because Of Your Settings, This Equation Overflowed. Turn Off 'Prevent Overflow' To See Overflow Value.");
                }
             }
+            result = lo;
          }
          JOptionPane.showMessageDialog(null, "The Result Of Your Addition Is: " + Long.toString(result), "Result", JOptionPane.INFORMATION_MESSAGE);
       } catch(NumberFormatException err) {
          throw new InvalidEquationException("Error: A Number In This Equation Is Invalid.");
       }
    }
+   public static void interpretSubtractionEquation(String equation) throws InvalidEquationException {
+      String temp = equation.replace("\n", "").replace(" ", "").replace("\t", "");
+      boolean isInvalidCharacter = false;
+      for(int i = 0; i < temp.toCharArray().length; i++) {
+         if(!(Character.isDigit(temp.toCharArray()[i]) || ((Character)temp.toCharArray()[i]).equals('-'))) {
+            isInvalidCharacter = true;
+            break;
+         }
+      }
+      if(isInvalidCharacter) {
+         throw new InvalidEquationException("Error: Your Equation Contains An Invalid Character.");
+      }
+      try {
+         LongStream ls = Arrays.stream(temp.split("\\-")).mapToLong(Long::parseLong);
+         LongStream ls2 = Arrays.stream(temp.split("\\-")).mapToLong(Long::parseLong).skip(1);
+         long first = ls.findFirst().getAsLong();
+         long result = ls2.reduce(first, (a, b) -> a - b);
+         if(Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventUnderflow"))) {
+            long[] results = Arrays.stream(temp.split("\\-")).mapToLong(Long::parseLong).toArray();
+            long finalNum = 0;
+            for(int i = 0; i < results.length; i++) {
+               if(i == 0) {
+                  finalNum = results[0];
+               } else {
+                  try {
+                     finalNum = Math.subtractExact(finalNum, results[i]);
+                  } catch(ArithmeticException err) {
+                     throw new InvalidEquationException("Because Of Your Settings, The Underflow Cause An Error.");
+                  }
+               }
+            }
+            result = finalNum;
+         }
+         JOptionPane.showMessageDialog(null, "The Result Of Your (Arguably Slightly More Complex) Subtraction Is: " + Long.toString(result), "Result", JOptionPane.INFORMATION_MESSAGE);
+      } catch(NumberFormatException err) {
+         throw new InvalidEquationException("Error: A Number In Your Equation Was Invalid.");
+      }
+   }
 }
 class Options extends JPanel {
    public JFrame frame = null;
+   public static JCheckBox[] jcbs = {new JCheckBox("Prevent Number Overflow"), new JCheckBox("Prevent Number Underflow")};
    public void showOptions() {
       frame = new JFrame("Options");
       frame.setUndecorated(false);
@@ -271,20 +337,32 @@ class Options extends JPanel {
       frame.setSize(Toolkit.getDefaultToolkit().getScreenSize().width / 3, Toolkit.getDefaultToolkit().getScreenSize().height / 2);
       frame.setLocation(Toolkit.getDefaultToolkit().getScreenSize().width / 6, Toolkit.getDefaultToolkit().getScreenSize().height / 4);
       frame.setLayout(null);
-      JCheckBox jcb = new JCheckBox("Prevent Number Overflow");
-      jcb.setSelected(Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventOverflow")));
-      jcb.addActionListener(e -> {
-         if(jcb.isSelected()) {
-            System.out.println("Enabled!");
-            Calculator.properties.put("Calculator.PreventOverflow", "true");
-            Calculator.updatePrefs();
-         } else {
-            System.out.println("Disabled!");
-            Calculator.properties.put("Calculator.PreventOverflow", "false");
-            Calculator.updatePrefs();
+      int yIncrement = 10;
+      for (JCheckBox jcb : jcbs) {
+         String prefsPath = switch(jcb.getText()) {
+            case "Prevent Number Overflow" -> "Calculator.PreventOverflow";
+            case "Prevent Number Underflow" -> "Calculator.PreventUnderflow";
+            default -> "null";
+         };
+         if(prefsPath.equals("null")) {
+            JOptionPane.showMessageDialog(null, "How Did This Even Happen?", "???", JOptionPane.ERROR_MESSAGE);
+            return;
          }
-      });
-      jcb.setBounds(10, 10, frame.getWidth() - (frame.getWidth() - 20), frame.getHeight() - (frame.getHeight() - 20));
-      frame.add(jcb);
+         jcb.setSelected(Boolean.parseBoolean(Calculator.properties.get(prefsPath)));
+         jcb.addActionListener(e -> {
+            if(jcb.isSelected()) {
+               System.out.println("Enabled");
+               Calculator.properties.put(prefsPath, "true");
+               Calculator.updatePrefs();
+            } else {
+               System.out.println("Disabled");
+               Calculator.properties.put(prefsPath, "false");
+               Calculator.updatePrefs();
+            }
+         });
+         jcb.setBounds(10, yIncrement, frame.getWidth() - (frame.getWidth() - 350), frame.getHeight() - (frame.getHeight() - 20 - yIncrement));
+         frame.add(jcb);
+         yIncrement += 20;
+      }
    }
 }
