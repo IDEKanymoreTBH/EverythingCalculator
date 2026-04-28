@@ -150,7 +150,16 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentMode = "SUB";
    }
    public void multiplication() {
-      System.out.println("Mult");
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("This Is Multiplication. Yeah... IDK What To Say TBH");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "MULT";
    }
    public void division() {
       System.out.println("Div");
@@ -193,14 +202,21 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                try {
                   MathUtils.interpretAdditionEquation(currentThing.getText());
                } catch(InvalidEquationException err) {
-                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result: ", JOptionPane.ERROR_MESSAGE);
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
             case "SUB":
                try {
                   MathUtils.interpretSubtractionEquation(currentThing.getText());
                } catch(InvalidEquationException err) {
-                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result: ", JOptionPane.ERROR_MESSAGE);
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "MULT":
+               try {
+                  MathUtils.interpretMultEquation(currentThing.getText());
+               } catch(InvalidEquationException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
             default:
@@ -322,6 +338,91 @@ class MathUtils {
       } catch(NumberFormatException err) {
          throw new InvalidEquationException("Error: A Number In Your Equation Was Invalid.");
       }
+   }
+   public static void interpretMultEquation(String equation) throws InvalidEquationException {
+      String temp = equation.replace("\n", "").replace(" ", "").replace("\t", "");
+      boolean isAsteriskFirst = ((Character)(temp.toCharArray()[0])).equals('*');
+      if(isAsteriskFirst) throw new InvalidEquationException("Error: Equation Starts With '*', But Should Start With: [Digit]");
+      boolean isInvalidCharacter = false;
+      for (int i = 0; i < temp.toCharArray().length; i++) {
+         if(!(Character.isDigit(temp.toCharArray()[i]) || ((Character)(temp.toCharArray()[i])).equals('*') || ((Character)(temp.toCharArray()[i])).equals('-'))) {
+            isInvalidCharacter = true;
+            break;
+         }
+      }
+      if(isInvalidCharacter) {
+         throw new InvalidEquationException("Error: Equation Contains An Invalid Character.");
+      }
+      try {
+         long[] results = Arrays.stream(temp.split("\\*")).mapToLong(Long::parseLong).toArray();
+         long finalResult = 1;
+         for (int i = 0; i < results.length; i++) {
+            finalResult *= results[i];
+         }
+         if(Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventOverflow")) || Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventUnderflow"))) {
+            long[] result = Arrays.stream(temp.split("\\*")).mapToLong(Long::parseLong).toArray();
+            long resultActual = 1;
+            for(int i = 0; i < result.length; i++) {
+               if(isUnderflow(resultActual, result[i]) && Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventUnderflow"))) {
+                  throw new InvalidEquationException("Your Equation Underflows, Which Violates Your Settings.");
+               }
+               if(isOverflow(resultActual, result[i]) && Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventOverflow"))) {
+                  throw new InvalidEquationException("Your Equation Overflows, Which Violates Your Settings");
+               }
+               resultActual = resultActual * result[i];
+               // try {
+               //    resultActual = Math.multiplyExact(resultActual, result[i]);
+               // } catch(ArithmeticException err) {
+               //    if(resultActual * result[i] > 0 && Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventUnderflow"))) {
+               //       throw new InvalidEquationException("Error: The Equation Underflowed, And Options Prevent That.");
+               //    } else if(resultActual * result[i] < 0 && Boolean.parseBoolean(Calculator.properties.get("Calculator.PreventOverflow"))) {
+               //       throw new InvalidEquationException("Error: The Equation Provided Overflowed, And The Prevent Overflow Options Is Enabled.");
+               //    }
+               // }
+            }
+            finalResult = resultActual;
+         }
+         JOptionPane.showMessageDialog(null, "The Result Of The Multiplication Is: " + Long.toString(finalResult), "Result", JOptionPane.INFORMATION_MESSAGE);
+      } catch(NumberFormatException err) {
+         throw new InvalidEquationException("Error: Equation Contains A Number That Is Formatted Incorrectly.");
+      }
+   }
+   /**
+    * <h2>Summary:</h2>
+    * This Method Checks Whether Two Longs Would Go Above The Maximum Long Value (9223372036854775807) When Multiplied.
+    * This Is Not The Same As {@code Math.multiplyExact()}, Since This Uses Simple Algebra Instead Of Bitwise Operations.
+    * <h2>Functionality:</h2>
+    * This Function Has Much SImpler Logic Than The {@code isUnderflow}, Since Each Parameter Is The Same Sign. If A*B > C,
+    * A > C/B, Provided That All Are Positive. The Same Is True For Negatives, Except All > Signs Are Reversed.
+    * @param a The First Number, Typically The Dividend / The Numerator
+    * @param b The Second Number, Typically The Divisor / The Denominator
+    * @return A Boolean Indicating Whether The Two Values Overflow When Multipled.
+    */
+   public static boolean isOverflow(long a, long b) {
+      //Since If A * B > Long.MAX_VALUE, Dividing Both Sides By B Would Mean A Is Larger Than MAX_VAL / B
+      //Also, Long.MAX_VALUE / B If B < 0 Would Be Negative, So Any Mult Between Them Would Be Too Large
+      return (a > 0 && b > 0 && a > Long.MAX_VALUE / b) || (a < 0 && b < 0 && a < Long.MAX_VALUE / b);
+   }
+   /**
+    * <h2>Summary:</h2>
+    * This Method Checks If Two Longs Are Going To Underflow The Minimum Long Value (-9,223,372,036,854,775,808)
+    * When Multiplied. This Is Not The Same As The Internal Checks Of {@code Math.multiplyExact}, As It Does Not Use
+    * Bit Shifts And Bit-wise Operations To Check Them, But Rather Uses Basic Algebraic Principles To Find Them.
+    * <h2>Functionality:</h2>
+    * This Function Takes In Two Longs: Long a And Long b. In Order To Return True, ONLY One Can Be Negative.
+    * After These Checks, It Checks If The Negative Value Is Less Than {@code Long.MIN_VALUE / [Positive_Value]}, Where
+    * Positive Value Is The Other Variable Not On The Left Of The Equation. This And The {@code isOverflow} Function Use
+    * This Basic Algebraic Principle: If a * b = c, a = c/b. Therefore, We Can Conclude That: If a * b > c, a > c/b, As Long As
+    * We Know That They Are In Specific Ranges. And Since Each Will Only Be Active When Those Specific Ranges Are Fulfilled, There
+    * Is A 100% Certainty To It. We Know That This Will Work, Even If We Can Directly Compare a * b To Long.MIN_VALUE.
+    * @param a The First Number, Typically The Dividend / The Numerator
+    * @param b The Second Number, Typically The Divisor / The Denominator
+    * @return A Boolean Indicating Whether They Overflow
+    */
+   public static boolean isUnderflow(long a, long b) {
+      //Since Mult Will ALways Be Negative, We Divide By The Positive Long So MIN_VALUE Does Not Become
+      //Positive. This Ensures The Check Is Between Negative Numbers Only
+      return (a > 0 && b < 0 && b < Long.MIN_VALUE / a) || (a < 0 && b > 0 && a < Long.MIN_VALUE / b);
    }
 }
 class Options extends JPanel {
