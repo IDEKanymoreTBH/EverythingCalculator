@@ -237,8 +237,21 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "EXPLOG";
    }
-   public void evalI() {}
-   public void sqrtI() {}
+   public void evalI() {
+      JOptionPane.showMessageDialog(null, "This Feature Is Not Currently Implemented. Please Come Back Later.");
+   }
+   public void sqrtI() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter Any Negative Number And It'll Find The Square Root Of It.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "iSQRT";
+   }
    public void options() {
       options.showOptions();
    }
@@ -320,6 +333,16 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                try {
                   MathUtils.interpretExponential(currentThing.getText());
                } catch(InvalidEquationException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "iEVAL":
+               System.out.println("???");
+               break;
+            case "iSQRT":
+               try {
+                  MathUtils.sqrtIrrNum(currentThing.getText());
+               } catch(InvalidInputException err) {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
@@ -671,6 +694,26 @@ class MathUtils {
          throw new InvalidEquationException("Error: One Or More Numbers Of Your Equation Are Formatted Incorrectly.");
       }
       JOptionPane.showMessageDialog(null, String.format("The Exponential Equation %f^%f = %f Converted To Logarithmic Form Is Log_%f(%f) = %f.", baseD, expD, equalD, baseD, equalD, expD));
+   }
+   public static void sqrtIrrNum(String interpretText) throws InvalidInputException {
+      String temp = interpretText.substring(0, interpretText.indexOf("\n"));
+      int i = 0;
+      try {
+         i = Integer.parseInt(temp);
+      } catch(NumberFormatException err) {
+         throw new InvalidInputException("Your Input To This Function Was Formatted Incorrectly.");
+      }
+      if(i > 0) {
+         throw new InvalidInputException("Your Input Is More Than One, Which Is Not What This Is About. Use The Regular Square Root Function In 'Basic Math'");
+      }
+      BigDecimal temp2 = new BigDecimal(i * -1);
+      String temp3;
+      if(Boolean.parseBoolean(Calculator.properties.get("Calculator.EngNotation"))) {
+         temp3 = temp2.sqrt(MathContext.DECIMAL64).toEngineeringString().concat("i");
+      } else {
+         temp3 = temp2.sqrt(MathContext.DECIMAL64).toPlainString().concat("i");
+      }
+      JOptionPane.showMessageDialog(null, String.format("The Square Root Of %d Is %s", i, temp3), "Result", JOptionPane.INFORMATION_MESSAGE);
    }
    /**
     * <h2>Summary:</h2>
