@@ -225,7 +225,18 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "LOGEXP";
    }
-   public void expToLog() {}
+   public void expToLog() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter An Exponential Equation, And Get Back A Logarithmic Equivalent. Use ^ For The Superscript Of The Exponent. Example: 5^2 = 25");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "EXPLOG";
+   }
    public void evalI() {}
    public void sqrtI() {}
    public void options() {
@@ -301,6 +312,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
             case "LOGEXP":
                try {
                   MathUtils.interpretLogarithm(currentThing.getText());
+               } catch(InvalidEquationException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "EXPLOG":
+               try {
+                  MathUtils.interpretExponential(currentThing.getText());
                } catch(InvalidEquationException err) {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
@@ -597,7 +615,6 @@ class MathUtils {
       if(tempLower.indexOf("log") == -1) {
          throw new InvalidEquationException("Error: There Is No Log In Your LOGarithm Equation.");
       }
-      String log = tempLower.substring(tempLower.indexOf("log"), tempLower.indexOf("log") + 3);
       String base;
       if(tempLower.indexOf("(") == -1 || tempLower.indexOf(")") == -1) {
          throw new InvalidEquationException("Error: One Or More Parethesis Are Missing.");
@@ -622,6 +639,38 @@ class MathUtils {
       double paramD = Double.parseDouble(param);
       double equalD = Double.parseDouble(equal);
       JOptionPane.showMessageDialog(null, String.format("log_%f(%f) = %f Converted To Exponential Form Is %f^%f = %f", baseD, paramD, equalD, baseD, equalD, paramD), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void interpretExponential(String expEquation) throws InvalidEquationException {
+      String temp = expEquation.replace("\n", "").replace("\t", "").replace(" ", "");
+      if(temp.indexOf("^") == -1) {
+         throw new InvalidEquationException("Error: Your Equation Does Not Contain '^'");
+      }
+      String base = temp.substring(0, temp.indexOf("^"));
+      if(base.equals("")) {
+         throw new InvalidEquationException("Error: Your Equation Has No Base.");
+      }
+      if(temp.indexOf("=") == -1) {
+         throw new InvalidEquationException("Error: Your Equation Does Not Contain An Equal Sign.");
+      }
+      String exp = temp.substring(temp.indexOf("^") + 1, temp.indexOf("="));
+      if(exp.equals("")) {
+         throw new InvalidEquationException("Error: Your Equation Contains No Exponent.");
+      }
+      String equal = temp.substring(temp.indexOf("=") + 1);
+      if(equal.equals("")) {
+         throw new InvalidEquationException("Error: Your Equation Does Not Contain A Product.");
+      }
+      double baseD = 0;
+      double expD = 0;
+      double equalD = 0;
+      try {
+         baseD = Double.parseDouble(base);
+         expD = Double.parseDouble(exp);
+         equalD = Double.parseDouble(equal);
+      } catch(NumberFormatException err) {
+         throw new InvalidEquationException("Error: One Or More Numbers Of Your Equation Are Formatted Incorrectly.");
+      }
+      JOptionPane.showMessageDialog(null, String.format("The Exponential Equation %f^%f = %f Converted To Logarithmic Form Is Log_%f(%f) = %f.", baseD, expD, equalD, baseD, equalD, expD));
    }
    /**
     * <h2>Summary:</h2>
