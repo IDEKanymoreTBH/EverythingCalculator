@@ -107,7 +107,15 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       }
       for(JMenuItem jmi : algebraItems) {
          jm2.add(jmi);
-         jmi.addActionListener(e -> System.out.println("THERE"));
+         ActionListener al = null;
+         al = switch(jmi.getText()) {
+            case "Logarithm -> Exponential" -> (e -> logToExp());
+            case "Exponential -> Logarithm" -> (e -> expToLog());
+            case "Evaluate With i" -> (e -> evalI());
+            case "Square Root Negative" -> (e -> sqrtI());
+            default -> (e -> JOptionPane.showMessageDialog(null, "Something Went Wrong!", "Error!", JOptionPane.ERROR_MESSAGE));
+         };
+         jmi.addActionListener(al);
       }
       for(JMenuItem jmi : chemItems) {
          jm3.add(jmi);
@@ -205,6 +213,21 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "EXP";
    }
+   public void logToExp() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter A Logarithmic Equation, And Get Back An Exponential Equivalent. Use _ To Signify That The Next Number Is The Base, Or Just Do () For Base 10. Example: Log_2(32) = 5.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "LOGEXP";
+   }
+   public void expToLog() {}
+   public void evalI() {}
+   public void sqrtI() {}
    public void options() {
       options.showOptions();
    }
@@ -272,6 +295,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                try {
                   MathUtils.expNumber(currentThing.getText());
                } catch(InvalidInputException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "LOGEXP":
+               try {
+                  MathUtils.interpretLogarithm(currentThing.getText());
+               } catch(InvalidEquationException err) {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
@@ -559,6 +589,39 @@ class MathUtils {
       } catch(NumberFormatException err) {
          throw new InvalidInputException("Error: Something Went Wrong Calculating Your Answer. Please Try Again.");
       }
+   }
+   public static void interpretLogarithm(String logEquation) throws InvalidEquationException {
+      String temp = logEquation.replace("\n", "").replace("\t", "").replace(" ", "");
+      String tempLower = temp.toLowerCase();
+      System.out.println(temp);
+      if(tempLower.indexOf("log") == -1) {
+         throw new InvalidEquationException("Error: There Is No Log In Your LOGarithm Equation.");
+      }
+      String log = tempLower.substring(tempLower.indexOf("log"), tempLower.indexOf("log") + 3);
+      String base;
+      if(tempLower.indexOf("(") == -1 || tempLower.indexOf(")") == -1) {
+         throw new InvalidEquationException("Error: One Or More Parethesis Are Missing.");
+      }
+      if(tempLower.indexOf("_") == -1 || tempLower.substring(tempLower.indexOf("_") + 1, tempLower.indexOf("(")).equals("")) {
+         base = "10";
+      } else {
+         base = tempLower.substring(tempLower.indexOf("_") + 1, tempLower.indexOf("("));
+      }
+      String param = tempLower.substring(tempLower.indexOf("(") + 1, tempLower.indexOf(")"));
+      if(param.equals("")) {
+         throw new InvalidEquationException("Error: There Is No A Value For log_B(A) = N");
+      }
+      if(tempLower.indexOf("=") == -1) {
+         throw new InvalidEquationException("Error: There Is No Equal Sign, Which Probably Means There's No N Value For log_B(A) = N Either");
+      }
+      String equal = tempLower.substring(tempLower.indexOf("=") + 1);
+      if(equal.equals("")) {
+         throw new InvalidEquationException("Error: There Is No N Value For log_B(A) = N.");
+      }
+      double baseD = Double.parseDouble(base);
+      double paramD = Double.parseDouble(param);
+      double equalD = Double.parseDouble(equal);
+      JOptionPane.showMessageDialog(null, String.format("log_%f(%f) = %f Converted To Exponential Form Is %f^%f = %f", baseD, paramD, equalD, baseD, equalD, paramD), "Result", JOptionPane.INFORMATION_MESSAGE);
    }
    /**
     * <h2>Summary:</h2>
