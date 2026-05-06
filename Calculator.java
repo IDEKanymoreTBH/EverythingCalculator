@@ -1,6 +1,7 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.prefs.Preferences;
@@ -181,7 +182,16 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentMode = "DIV";
    }
    public void sqrt() {
-      System.out.println("SQRT");
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter Exactly ONE Number, And You'll Get It's Square Root.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "SQRT";
    }
    public void atob() {
       System.out.println("Exp");
@@ -239,6 +249,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                try {
                   MathUtils.interpretDivisionEquation(currentThing.getText(), Integer.parseInt(Calculator.properties.get("Calculator.PrecisionDecimal")), MathUtils.RoundingStandard.ROUND_DOWN);
                } catch(InvalidEquationException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "SQRT":
+               try {
+                  MathUtils.sqrtNumber(currentThing.getText());
+               } catch(InvalidInputException err) {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
@@ -491,6 +508,26 @@ class MathUtils {
       } catch(NumberFormatException er) {
          throw new InvalidEquationException("Error: A Number In Your Equation Is Formatted Incorrectly");
       }
+   }
+   public static void sqrtNumber(String interpretText) throws InvalidInputException {
+      String temp = interpretText.substring(0, interpretText.indexOf("\n"));
+      int i = 0;
+      try {
+         i = Integer.parseInt(temp);
+      } catch(NumberFormatException err) {
+         throw new InvalidInputException("Your Input To This Function Was Formatted Incorrectly.");
+      }
+      if(i < 0) {
+         throw new InvalidInputException("Your Input Is Less Than One, Which Cannot Be Accepted As Input To A Square-Root Function");
+      }
+      BigDecimal temp2 = new BigDecimal(i);
+      String temp3;
+      if(Boolean.parseBoolean(Calculator.properties.get("Calculator.EngNotation"))) {
+         temp3 = temp2.sqrt(MathContext.DECIMAL64).toEngineeringString();
+      } else {
+         temp3 = temp2.sqrt(MathContext.DECIMAL64).toPlainString();
+      }
+      JOptionPane.showMessageDialog(null, String.format("The Square Root Of %d Is %s", i, temp3));
    }
    /**
     * <h2>Summary:</h2>

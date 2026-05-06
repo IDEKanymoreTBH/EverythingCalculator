@@ -56,3 +56,32 @@ class InvalidEquationException extends EveryCalcException {
       super(message, throwable);
    }
 }
+/**InvalidInputException Is Thrown When The Input Of A One-Number Function Does Not Get That*/
+class InvalidInputException extends EveryCalcException {
+   /**Constructs An InvalidInputException With No Details. Not Sure Why You Would Want This... */
+   public InvalidInputException() {
+      super();
+   }
+   /**
+    * Constructs An InvalidInputException With A Given Message
+    * @param msg The Message To Give
+    */
+   public InvalidInputException(String msg) {
+      super(msg);
+   }
+   /**
+    * Constructs An InvalidInputException With Whatever A Throwable Is
+    * @param throwable Your Throwable
+    */
+   public InvalidInputException(Throwable throwable) {
+      super(throwable);
+   }
+   /**
+    * Constructs An InvalidInputException With A Message And Some Throwable
+    * @param msg The Message
+    * @param throwable Your Awful 'Throwable'
+    */
+   public InvalidInputException(String msg, Throwable throwable) {
+      super(msg, throwable);
+   }
+}
