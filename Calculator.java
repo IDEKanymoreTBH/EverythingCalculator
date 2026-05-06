@@ -1,11 +1,15 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.prefs.Preferences;
 import java.util.stream.LongStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 public class Calculator extends JPanel implements MouseListener, KeyListener {
    public JFrame frame = new JFrame("EveryCalc");
    public SystemTray systemTray;
@@ -30,6 +34,9 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
 
    public Calculator() {
       properties.put("Calculator.PreventOverflow", prefs.get("Calculator.PreventOverflow", "false"));
+      properties.put("Calculator.PreventUnderflow", prefs.get("Calculator.PreventUnderflow", "false"));
+      properties.put("Calculator.EngNotation", prefs.get("Calculator.EngNotation", "false"));
+      properties.put("Calculator.PrecisionDecimal", prefs.get("Calculator.PrecisionDecimal", "1"));
       System.setProperty("apple.awt.application.name", "EveryCalc");
       System.setProperty("apple.laf.useScreenMenuBar", "true");
       this.frame.setUndecorated(false);
@@ -162,7 +169,16 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentMode = "MULT";
    }
    public void division() {
-      System.out.println("Div");
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("This Is Division. Divide By WHOLE Numbers Please.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "DIV";
    }
    public void sqrt() {
       System.out.println("SQRT");
@@ -219,6 +235,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
+            case "DIV":
+               try {
+                  MathUtils.interpretDivisionEquation(currentThing.getText(), Integer.parseInt(Calculator.properties.get("Calculator.PrecisionDecimal")), MathUtils.RoundingStandard.ROUND_DOWN);
+               } catch(InvalidEquationException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
             default:
                JOptionPane.showMessageDialog(null, "...HOW?!?!?", "...", JOptionPane.ERROR_MESSAGE);
          }
@@ -260,6 +283,53 @@ class AboutEveryCalc extends JPanel {
    }
 }
 class MathUtils {
+   enum RoundingStandard {
+      /**Rounds Away From Zero */
+      ROUND_UP(RoundingMode.UP),
+      /**Rounds Towards Zero */
+      ROUND_DOWN(RoundingMode.DOWN),
+      /**Rounds Up Towards +∞ No Matter The Sign*/
+      ROUND_CEIL(RoundingMode.CEILING),
+      /**Rounds Down Towards -∞ No Matter The Sign*/
+      ROUND_FLOOR(RoundingMode.FLOOR),
+      /**The Rounding Literally EVERYONE Knows.*/
+      ROUND(RoundingMode.HALF_UP),
+      /**Rounds Towards The Nearest Even Number If Both Neighbors Are Equidistant, Or The Nearest Neighbor*/
+      ROUND_EVEN(RoundingMode.HALF_EVEN),
+      /**Same As ROUND But Rounds Down Instead Of Up If Equidistant*/
+      INV_ROUND(RoundingMode.HALF_DOWN),
+      /**It Doesn't Round, Instead Taking The Entire Program Down Instead.*/
+      ROUND_BAD(RoundingMode.UNNECESSARY);
+      /**The RoundingMode Associated With A Thing */
+      private final RoundingMode rm;
+      /**
+       * Constructs A New RoundingStandard.
+       * @param rm The RoundingMode To Use
+       */
+      private RoundingStandard(RoundingMode rm) {
+         this.rm = rm;
+      }
+      /**
+       * Gets The RoundingMode Of Any RoundingStandard
+       * @return The RoundingMode
+       */
+      public RoundingMode getRoundingMode() {
+         return this.rm;
+      }
+      /**
+       * Gets The Standard Associated With A Given Value
+       * @param rm The RoundingMode To Check For.
+       * @return The RoundingStandard That Has The Value, Or Null If It Does Not Exist.
+       */
+      public static RoundingStandard getForStandard(RoundingMode rm) {
+         for(RoundingStandard rs : values()) {
+            if(rs.rm == rm) {
+               return rs;
+            }
+         }
+         return null;
+      } 
+   }
    public static void interpretAdditionEquation(String equation) throws InvalidEquationException {
       String temp = equation.replace("\n", "").replace(" ", "").replace("\t", "");
       boolean isPlusFirst;
@@ -387,12 +457,47 @@ class MathUtils {
          throw new InvalidEquationException("Error: Equation Contains A Number That Is Formatted Incorrectly.");
       }
    }
+   public static void interpretDivisionEquation(String equation, int roundingAmt, RoundingStandard standard) throws InvalidEquationException {
+      String temp = equation.replace("\n", "").replace(" ", "").replace("\t", "");
+      boolean isSlashFirst = ((Character)(temp.toCharArray()[0])).equals('/');
+      if(isSlashFirst) {
+         throw new InvalidEquationException("Error: There Is A / First, Which Is Invalid");
+      }
+      boolean isInvalidCharacter = false;
+      for (int i = 0; i < temp.toCharArray().length; i++) {
+         if(!(Character.isDigit(temp.toCharArray()[i]) || ((Character)(temp.toCharArray()[i])).equals('/'))) {
+            isInvalidCharacter = true;
+            break;
+         }
+      }
+      if(isInvalidCharacter) {
+         throw new InvalidEquationException("Error: Your Equation Contains An Invalid Character");
+      }
+      try {
+         long[] result = Arrays.stream(temp.split("\\/")).mapToLong(Long::parseLong).toArray();
+         BigDecimal resultFinal = new BigDecimal(0);
+         for(int i = 0; i < result.length; i++) {
+            if(i == 0) {
+               resultFinal = new BigDecimal(result[0]);
+               continue;
+            }
+            resultFinal = resultFinal.divide(new BigDecimal(result[i]), roundingAmt, standard.getRoundingMode());
+         }
+         if(Boolean.parseBoolean(Calculator.properties.get("Calculator.EngNotation"))) {
+            JOptionPane.showMessageDialog(null, "The Result Of Your Division Is: " + resultFinal.toEngineeringString(), "Result", JOptionPane.INFORMATION_MESSAGE);
+         } else {
+            JOptionPane.showMessageDialog(null, "The Result Of Your Division Is: " + resultFinal.toPlainString(), "Result", JOptionPane.INFORMATION_MESSAGE);
+         }
+      } catch(NumberFormatException er) {
+         throw new InvalidEquationException("Error: A Number In Your Equation Is Formatted Incorrectly");
+      }
+   }
    /**
     * <h2>Summary:</h2>
     * This Method Checks Whether Two Longs Would Go Above The Maximum Long Value (9223372036854775807) When Multiplied.
     * This Is Not The Same As {@code Math.multiplyExact()}, Since This Uses Simple Algebra Instead Of Bitwise Operations.
     * <h2>Functionality:</h2>
-    * This Function Has Much SImpler Logic Than The {@code isUnderflow}, Since Each Parameter Is The Same Sign. If A*B > C,
+    * This Function Has Much Simpler Logic Than The {@code isUnderflow}, Since Each Parameter Is The Same Sign. If A*B > C,
     * A > C/B, Provided That All Are Positive. The Same Is True For Negatives, Except All > Signs Are Reversed.
     * @param a The First Number, Typically The Dividend / The Numerator
     * @param b The Second Number, Typically The Divisor / The Denominator
@@ -427,7 +532,7 @@ class MathUtils {
 }
 class Options extends JPanel {
    public JFrame frame = null;
-   public static JCheckBox[] jcbs = {new JCheckBox("Prevent Number Overflow"), new JCheckBox("Prevent Number Underflow")};
+   public static JCheckBox[] jcbs = {new JCheckBox("Prevent Number Overflow"), new JCheckBox("Prevent Number Underflow"), new JCheckBox("Use Engineering Notation")};
    public void showOptions() {
       frame = new JFrame("Options");
       frame.setUndecorated(false);
@@ -443,6 +548,7 @@ class Options extends JPanel {
          String prefsPath = switch(jcb.getText()) {
             case "Prevent Number Overflow" -> "Calculator.PreventOverflow";
             case "Prevent Number Underflow" -> "Calculator.PreventUnderflow";
+            case "Use Engineering Notation" -> "Calculator.EngNotation";
             default -> "null";
          };
          if(prefsPath.equals("null")) {
@@ -465,5 +571,27 @@ class Options extends JPanel {
          frame.add(jcb);
          yIncrement += 20;
       }
+      JSlider slider = new JSlider(1, 50);
+      slider.setPaintTicks(true);
+      slider.setPaintTrack(true);
+      slider.setMinorTickSpacing(5);
+      slider.setSnapToTicks(false);
+      slider.setMajorTickSpacing(10);
+      slider.setValue(Integer.parseInt(Calculator.properties.get("Calculator.PrecisionDecimal")));
+      slider.setBounds(10, yIncrement + 20, frame.getWidth() - (frame.getWidth() - 350), frame.getHeight() - (frame.getHeight() - 20 - yIncrement));
+      JLabel label = new JLabel("Precision (In Decimal Places): " + Integer.toString(slider.getValue()));
+      slider.addChangeListener(new ChangeListener() {
+         public void stateChanged(ChangeEvent evt) {
+            label.setText("Precision (In Decimal Places): " + Integer.toString(slider.getValue()));
+            Calculator.properties.put("Calculator.PrecisionDecimal", Integer.toString(slider.getValue()));
+            Calculator.updatePrefs();
+         }
+      });
+      frame.add(slider);
+      label.setVisible(true);
+      label.setBounds(18, yIncrement + 5, frame.getWidth() - (frame.getWidth() - 350), frame.getHeight() - (frame.getHeight() - 20 - yIncrement));
+      frame.add(label);
+      //Add Rounding Mode
+      //Add How Many Places To Round
    }
 }
