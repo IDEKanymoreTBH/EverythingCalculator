@@ -194,7 +194,16 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentMode = "SQRT";
    }
    public void atob() {
-      System.out.println("Exp");
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter The Base Number, Then A Comma, Then The Exponent");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "EXP";
    }
    public void options() {
       options.showOptions();
@@ -255,6 +264,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
             case "SQRT":
                try {
                   MathUtils.sqrtNumber(currentThing.getText());
+               } catch(InvalidInputException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "EXP":
+               try {
+                  MathUtils.expNumber(currentThing.getText());
                } catch(InvalidInputException err) {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
@@ -527,7 +543,22 @@ class MathUtils {
       } else {
          temp3 = temp2.sqrt(MathContext.DECIMAL64).toPlainString();
       }
-      JOptionPane.showMessageDialog(null, String.format("The Square Root Of %d Is %s", i, temp3));
+      JOptionPane.showMessageDialog(null, String.format("The Square Root Of %d Is %s", i, temp3), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void expNumber(String numberText) throws InvalidInputException {
+      String temp = numberText.replace("\n", "").replace("\t", "").replace(" ", "");
+      String[] temp2 = temp.split("\\,");
+      if(temp2.length > 2) {
+         throw new InvalidInputException("You Have Input Too Many Things.");
+      } else if(temp2.length < 2) {
+         throw new InvalidInputException("You Have Input Too Few Things.");
+      }
+      try {
+         double d = Math.pow(Double.parseDouble(temp2[0]), Double.parseDouble(temp2[1]));
+         JOptionPane.showMessageDialog(null, String.format("The Result Of %f^%f Is %f", Double.parseDouble(temp2[0]), Double.parseDouble(temp2[1]), d), "Result", JOptionPane.INFORMATION_MESSAGE);
+      } catch(NumberFormatException err) {
+         throw new InvalidInputException("Error: Something Went Wrong Calculating Your Answer. Please Try Again.");
+      }
    }
    /**
     * <h2>Summary:</h2>
