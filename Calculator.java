@@ -291,7 +291,7 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       frame.getContentPane().removeAll();
       frame.revalidate();
       frame.repaint();
-      JTextArea jta = new JTextArea("Enter The Mass Of The Substance, As Well As The Element Being Measured, And Will Be Returned As The Moles Of That Substance");
+      JTextArea jta = new JTextArea("Enter The Mass Of The Substance (In Grams), As Well As The Element Being Measured, And Will Be Returned As The Moles Of That Substance. Example: 14, Hydrogen");
       jta.setLineWrap(true);
       jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
       jta.addKeyListener(this);
@@ -299,7 +299,18 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "MAtM";
    }
-   public void MToMa() {}
+   public void MToMa() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter The Amount Of Moles Of A Substance, As Well As The Element, And Get Back How Many Grams Of That Substance There Is. Example: 34, Gadolinium");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "MtMA";
+   }
    public void FindQ() {}
    public void FindM() {}
    public void FindC() {}
@@ -417,6 +428,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                   MathUtils.massToMole(currentThing.getText());
                } catch(InvalidInputException err) {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "MtMA":
+               try {
+                  MathUtils.moleToMass(currentThing.getText());
+               } catch(InvalidInputException iie) {
+                  JOptionPane.showMessageDialog(null, iie.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
             default:
@@ -838,6 +856,30 @@ class MathUtils {
          throw new InvalidInputException("Error: '" + elementName + "' Is Not A Valid Element.");
       }
       JOptionPane.showMessageDialog(null, String.format("%f Grams Of %s Is %f Moles Of %s", mass, elementName, moles, elementName), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void moleToMass(String interpretText) throws InvalidInputException {
+      String temp = interpretText.replace(" ", "").replace("\n", "").replace("\t", "");
+      String elementName = temp.substring(temp.indexOf(",") + 1);
+      double moles;
+      try {
+         moles = Double.parseDouble(temp.substring(0, temp.indexOf(",")));
+         if(moles < 0) throw new NumberFormatException();
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Mole Amount Is Invalid.");
+      } catch(StringIndexOutOfBoundsException sioobe) {
+         throw new InvalidInputException("Error: You Do Not Have A Comma.");
+      }
+      if(elementName.isBlank()) {
+         throw new InvalidInputException("Error: No Element Name Given.");
+      }
+      double mass;
+      try {
+         //All Element Names Are All Lowercase
+         mass = moles * MolarMass.getForMass(elementName.toLowerCase());
+      } catch(UnknownElementException uee) {
+         throw new InvalidInputException("Error: '" + elementName + "' Is Not A Valid Element.");
+      }
+      JOptionPane.showMessageDialog(null, String.format("%f Moles Of %s Is %f Grams Of %s", moles, elementName, mass, elementName), "Result", JOptionPane.INFORMATION_MESSAGE);
    }
    /**
     * <h2>Summary:</h2>
