@@ -119,7 +119,18 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       }
       for(JMenuItem jmi : chemItems) {
          jm3.add(jmi);
-         jmi.addActionListener(e -> System.out.println("WHERE"));
+         ActionListener al = switch(jmi.getText()) {
+            case "Liters -> Moles" -> (e -> LToM());
+            case "Moles -> Liters" -> (e -> MToL());
+            case "Mass -> Moles" -> (e -> MaToM());
+            case "Moles -> Mass" -> (e -> MToMa());
+            case "Q = mc∆T: Find Q" -> (e -> FindQ());
+            case "Q = mc∆T: Find m" -> (e -> FindM());
+            case "Q = mc∆T: Find c" -> (e -> FindC());
+            case "Q = mc∆T: Find ∆T" -> (e -> FindDeltaT());
+            default -> (e -> JOptionPane.showMessageDialog(null, "Wrong Thing!", "Error", JOptionPane.ERROR_MESSAGE));
+         };
+         jmi.addActionListener(al);
       }
       // if (SystemTray.isSupported()) {
       //    this.systemTray = SystemTray.getSystemTray();
@@ -252,6 +263,47 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "iSQRT";
    }
+   public void LToM() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter The Amount Of Liters, And You'll Get Back The Amount In Moles. Only Enter A Single Number. Only Works With Liters At STP (Standard Temperature and Pressure).");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "LtM";
+   }
+   public void MToL() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter The Amount Of Moles, And You'll Get Back The Amount In Liters. Only Enter A Single Number. Only Works With Moles At STP (Standard Temperature and Pressure).");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "MtL";
+   }
+   public void MaToM() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter The Mass Of The Substance, As Well As The Element Being Measured, And Will Be Returned As The Moles Of That Substance");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "MAtM";
+   }
+   public void MToMa() {}
+   public void FindQ() {}
+   public void FindM() {}
+   public void FindC() {}
+   public void FindDeltaT() {}
    public void options() {
       options.showOptions();
    }
@@ -342,6 +394,27 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
             case "iSQRT":
                try {
                   MathUtils.sqrtIrrNum(currentThing.getText());
+               } catch(InvalidInputException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "LtM":
+               try {
+                  MathUtils.literToMole(currentThing.getText());
+               } catch(InvalidInputException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "MtL":
+               try {
+                  MathUtils.moleToLiter(currentThing.getText());
+               } catch(InvalidInputException err) {
+                  JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "MAtM":
+               try {
+                  MathUtils.massToMole(currentThing.getText());
                } catch(InvalidInputException err) {
                   JOptionPane.showMessageDialog(null, err.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
@@ -714,6 +787,57 @@ class MathUtils {
          temp3 = temp2.sqrt(MathContext.DECIMAL64).toPlainString().concat("i");
       }
       JOptionPane.showMessageDialog(null, String.format("The Square Root Of %d Is %s", i, temp3), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void literToMole(String interpretText) throws InvalidInputException {
+      if(interpretText.split(" ").length > 1 && !(interpretText.split(" ")[1].isBlank())) {
+         throw new InvalidInputException("Error: You Did Not Enter ONLY One Number.");
+      }
+      String temp = interpretText.replace(" ", "").replace("\t", "").replace("\n", "");
+      double liters;
+      try {
+         liters = Double.parseDouble(temp);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: The Number Inputted Is Invalid.");
+      }
+      double moles = liters / 22.4;
+      JOptionPane.showMessageDialog(null, String.format("%f Liters At STP Is %f Moles.", liters, moles), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void moleToLiter(String interpretText) throws InvalidInputException {
+      if(interpretText.split(" ").length > 1 && !(interpretText.split(" ")[1].isBlank())) {
+         throw new InvalidInputException("Error: You Did Not Enter One Number.");
+      }
+      String temp = interpretText.replace(" ", "").replace("\t", "").replace("\n", "");
+      double moles;
+      try {
+         moles = Double.parseDouble(temp);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: The Number You Have Input Is Not Valid.");
+      }
+      double liters = moles * 22.4;
+      JOptionPane.showMessageDialog(null, String.format("%f Moles At STP Is Equal To %f Liters.", moles, liters), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void massToMole(String interpretText) throws InvalidInputException {
+      String temp = interpretText.replace(" ", "").replace("\t", "").replace("\n", "");
+      String elementName = temp.substring(temp.indexOf(",") + 1);
+      double mass;
+      try {
+         mass = Double.parseDouble(temp.substring(0, temp.indexOf(",")));
+         if(mass < 0) throw new NumberFormatException();
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Mass Is Invalid.");
+      } catch(StringIndexOutOfBoundsException sioobe) {
+         throw new InvalidInputException("Error: Your Thing Does Not Have A Comma.");
+      }
+      if(elementName.isBlank()) {
+         throw new InvalidInputException("Error: You Did Not Give An Element Name.");
+      }
+      double moles;
+      try {
+         moles = mass / MolarMass.getForMass(elementName.toLowerCase());
+      } catch(UnknownElementException uee) {
+         throw new InvalidInputException("Error: '" + elementName + "' Is Not A Valid Element.");
+      }
+      JOptionPane.showMessageDialog(null, String.format("%f Grams Of %s Is %f Moles Of %s", mass, elementName, moles, elementName), "Result", JOptionPane.INFORMATION_MESSAGE);
    }
    /**
     * <h2>Summary:</h2>
