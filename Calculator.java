@@ -323,7 +323,18 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "FindQ";
    }
-   public void FindM() {}
+   public void FindM() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter, In Order, The Joules, The Specific Heat Capacity (In J/gºC), And Change In Celsius. You Will Get The Mass.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "FindM";
+   }
    public void FindC() {}
    public void FindDeltaT() {}
    public void options() {
@@ -453,6 +464,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                   MathUtils.findQ(currentThing.getText());
                } catch(InvalidInputException e) {
                   JOptionPane.showMessageDialog(null, e.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "FindM":
+               try {
+                  MathUtils.findM(currentThing.getText());
+               } catch(InvalidInputException iie) {
+                  JOptionPane.showMessageDialog(null, iie.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
             default:
@@ -933,6 +951,36 @@ class MathUtils {
          throw new InvalidInputException("Error: Your Change In Termperature Is Invalid.");
       }
       JOptionPane.showMessageDialog(null, String.format("The Joules Needed To Raise %f Grams Of A Substance With A SHC Of %f By %fºC Is %fJ", massD, shcD, deltaTD, (massD * shcD * deltaTD)), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void findM(String interpret) throws InvalidInputException {
+      String temp = interpret.replace(" ", "").replace("\n", "").replace("\t", "");
+      if(temp.split(",").length != 3) {
+         throw new InvalidInputException("Error: There Are Not 3 Commas In Your Input, Or A Comma Is At The End.");
+      }
+      String joules = temp.substring(0, temp.indexOf(","));
+      temp = temp.substring(joules.length() + 1);
+      double joulesD;
+      try {
+         joulesD = Double.parseDouble(joules);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Number Of Joules Is Invalid.");
+      }
+      String shc = temp.substring(0, temp.indexOf(","));
+      temp = temp.substring(shc.length() + 1);
+      double shcD;
+      try {
+         shcD = Double.parseDouble(shc);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Specific Heat Capacity Is Invalid.");
+      }
+      String deltaT = temp.substring(0);
+      double deltaTD;
+      try {
+         deltaTD = Double.parseDouble(deltaT);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Change In Temperature Is Invalid.");
+      }
+      JOptionPane.showMessageDialog(null, String.format("The Mass Of A Substance With An SHC Of %f That Is Raised %fºC From %f Joules Of Energy Is %f Grams.", shcD, deltaTD, joulesD, (joulesD/(shcD * deltaTD))), "Result", JOptionPane.INFORMATION_MESSAGE);
    }
    /**
     * <h2>Summary:</h2>
