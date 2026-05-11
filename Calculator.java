@@ -3,7 +3,6 @@ import java.awt.event.*;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.text.NumberFormat;
 import java.util.prefs.Preferences;
 import java.util.stream.LongStream;
 import java.util.Arrays;
@@ -348,7 +347,18 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "FindC";
    }
-   public void FindDeltaT() {}
+   public void FindDeltaT() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter, In Order, The Joules, Mass In Grams, And Specific Heat Capacity In J/gºC. You Will Get Back The Change In Temperature In Celsius.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "FindT";
+   }
    public void options() {
       options.showOptions();
    }
@@ -488,6 +498,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
             case "FindC":
                try {
                   MathUtils.findC(currentThing.getText());
+               } catch(InvalidInputException iie) {
+                  JOptionPane.showMessageDialog(null, iie.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "FindT":
+               try {
+                  MathUtils.findT(currentThing.getText());
                } catch(InvalidInputException iie) {
                   JOptionPane.showMessageDialog(null, iie.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
@@ -1030,6 +1047,36 @@ class MathUtils {
          throw new InvalidInputException("Error: Your Change In Temperature Is Invalid.");
       }
       JOptionPane.showMessageDialog(null, String.format("The Specific Heat Capacity Of %f Grams Of A Substance That Changed %fºC From %f Joules Is %f J/gºC.", massD, deltaTD, joulesD, (joulesD/(massD*deltaTD))), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
+   public static void findT(String interpret) throws InvalidInputException {
+      String temp = interpret.replace(" ", "").replace("\n", "").replace("\t", "");
+      if(temp.split(",").length != 3) {
+         throw new InvalidInputException("Error: You Do Not Have The Right Amount Of Parameters.");
+      }
+      String joules = temp.substring(0, temp.indexOf(","));
+      temp = temp.substring(joules.length() + 1);
+      double joulesD;
+      try {
+         joulesD = Double.parseDouble(joules);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Amount Of Joules Is Invalid.");
+      }
+      String mass = temp.substring(0, temp.indexOf(","));
+      temp = temp.substring(mass.length() + 1);
+      double massD;
+      try {
+         massD = Double.parseDouble(mass);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Mass Is Invalid.");
+      }
+      String shc = temp.substring(0);
+      double shcD;
+      try {
+         shcD = Double.parseDouble(shc);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Change In Temp Is Invalid.");
+      }
+      JOptionPane.showMessageDialog(null, String.format("The Change In Celsius From %f Grams Of A Substance With An SHC Of %f J/gºC After %f Joules Is Applied Is %fºC.", massD, shcD, joulesD, (joulesD/(massD*shcD))), "Result", JOptionPane.INFORMATION_MESSAGE);
    }
    /**
     * <h2>Summary:</h2>
