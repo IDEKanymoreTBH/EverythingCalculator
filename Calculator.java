@@ -311,7 +311,18 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       currentThing = jta;
       currentMode = "MtMA";
    }
-   public void FindQ() {}
+   public void FindQ() {
+      frame.getContentPane().removeAll();
+      frame.revalidate();
+      frame.repaint();
+      JTextArea jta = new JTextArea("Enter, In Order, The Mass(In Grams), Specific Heat Capacity (In J/gºC), And Change In Celsius. You Will Get The Joules Input.");
+      jta.setLineWrap(true);
+      jta.setBounds(10, 10, frame.getWidth() - 20, frame.getHeight() - 50);
+      jta.addKeyListener(this);
+      frame.add(jta);
+      currentThing = jta;
+      currentMode = "FindQ";
+   }
    public void FindM() {}
    public void FindC() {}
    public void FindDeltaT() {}
@@ -435,6 +446,13 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
                   MathUtils.moleToMass(currentThing.getText());
                } catch(InvalidInputException iie) {
                   JOptionPane.showMessageDialog(null, iie.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
+               }
+               break;
+            case "FindQ":
+               try {
+                  MathUtils.findQ(currentThing.getText());
+               } catch(InvalidInputException e) {
+                  JOptionPane.showMessageDialog(null, e.getMessage(), "Result", JOptionPane.ERROR_MESSAGE);
                }
                break;
             default:
@@ -881,9 +899,44 @@ class MathUtils {
       }
       JOptionPane.showMessageDialog(null, String.format("%f Moles Of %s Is %f Grams Of %s", moles, elementName, mass, elementName), "Result", JOptionPane.INFORMATION_MESSAGE);
    }
+   public static void findQ(String interpret) throws InvalidInputException {
+      String temp = interpret.replace(" ", "").replace("\n", "").replace("\t", "");
+      if(temp.split(",").length != 3) {
+         throw new InvalidInputException("Error: You Do Not Have Enough Commas In Your Input To Satisfy All Three Inputs.");
+      }
+      String mass = temp.substring(0, temp.indexOf(","));
+      temp = temp.substring(mass.length() + 1);
+      System.out.println("New Temp String: " + temp);
+      System.out.println("Mass: " + mass);
+      double massD;
+      try {
+         massD = Double.parseDouble(mass);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Mass Value Did Not Compile Correctly.");
+      }
+      String shc = temp.substring(0, temp.indexOf(","));
+      temp = temp.substring(shc.length() + 1);
+      System.out.println("NewER Temp String: " + temp);
+      System.out.println("SHC: " + shc);
+      double shcD;
+      try {
+         shcD = Double.parseDouble(shc);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Specific Heat Capacity Value Is Invalid.");
+      }
+      String deltaT = temp.substring(0);
+      System.out.println("∆T: " + deltaT);
+      double deltaTD;
+      try {
+         deltaTD = Double.parseDouble(deltaT);
+      } catch(NumberFormatException nfe) {
+         throw new InvalidInputException("Error: Your Change In Termperature Is Invalid.");
+      }
+      JOptionPane.showMessageDialog(null, String.format("The Joules Needed To Raise %f Grams Of A Substance With A SHC Of %f By %fºC Is %fJ", massD, shcD, deltaTD, (massD * shcD * deltaTD)), "Result", JOptionPane.INFORMATION_MESSAGE);
+   }
    /**
     * <h2>Summary:</h2>
-    * This Method Checks Whether Two Longs Would Go Above The Maximum Long Value (9223372036854775807) When Multiplied.
+    * This Method Checks Whether Two Longs Would Go Above The Maximum Long Value (9,223,372,036,854,775,807) When Multiplied.
     * This Is Not The Same As {@code Math.multiplyExact()}, Since This Uses Simple Algebra Instead Of Bitwise Operations.
     * <h2>Functionality:</h2>
     * This Function Has Much Simpler Logic Than The {@code isUnderflow}, Since Each Parameter Is The Same Sign. If A*B > C,
