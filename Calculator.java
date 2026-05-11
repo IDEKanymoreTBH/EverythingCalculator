@@ -53,7 +53,8 @@ public class Calculator extends JPanel implements MouseListener, KeyListener {
       this.frame.setLayout(null);
       JTextArea ta = new JTextArea("""
             Welcome! Use The OS Native Menus To Navigate. On Windows, It'll Most Likely Be The TaskBar. On MacOS,\n
-            You Just Look At The Top And See Them. On Linux, It'll Be Whatever Global Panel You Have.
+            You Just Look At The Top And See Them. On Linux, It'll Be Whatever Global Panel You Have. \n
+            Also, If You Find Any Issues, Whether Logical Or Semantic, Report It To The Github.
             """);
       ta.setEditable(false);
       ta.setOpaque(true);
